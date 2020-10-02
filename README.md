@@ -8,6 +8,6 @@
 
 4. npm run peer - Starts peerJS / webRTC server
 
-5. Open https://<IP-address>:3000
+5. Open https://IP-address:3000
 
 Note that mock SSL certificate was created to by pass security issues in web browser.
