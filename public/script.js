@@ -27,10 +27,18 @@ navigator.mediaDevices.getUserMedia({
   // adding own video stream on the front end
   addVideoStream(myVideo, stream)
 
-  // when someone new joins, they will call the user
+  // this is called when the next user onwards join the room 
+  socket.on('user-connected', userId => {
+    console.log(`a new user, ${userId}, has just joined the room, calling user now `, Date.now())
+    // call the new user
+    callAndConnectNewUser(userId, stream)
+  })
+
+  // when a user receives a phone call
   myPeer.on('call', call => {
-    console.log(call, 'calling')
-    // user answers the call with an A/V stream.
+    // answers the call with their A/V stream.
+    console.log(`Receiving a call`)
+    console.log(`answering the call and returning my stream at time: ${Date.now()}`)
     call.answer(stream)
     const video = document.createElement('video')
     call.on('stream', userVideoStream => {
@@ -38,22 +46,20 @@ navigator.mediaDevices.getUserMedia({
       addVideoStream(video, userVideoStream)
     })
   })
-
-  socket.on('user-connected', userId => {
-    console.log(`connecting a new user, ${userId}, that has just joined us `)
-    connectToNewUser(userId, stream)
-  })
 })
 
 socket.on('user-disconnected', userId => {
+  // close the call
   if (peers[userId]) peers[userId].close()
 })
 
 
-function connectToNewUser(userId, stream) {
+function callAndConnectNewUser(userId, stream) {
+  console.log(`calling new user at time: ${Date.now()}`)
   const call = myPeer.call(userId, stream)
   const video = document.createElement('video')
   call.on('stream', userVideoStream => {
+    console.log(`Callee answered and returned stream at time: ${Date.now()}`)
     addVideoStream(video, userVideoStream)
   })
   call.on('close', () => {

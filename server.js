@@ -27,8 +27,11 @@ app.get('/:room', (req, res) => {
 io.on('connection', socket => {
   socket.on('join-room', (roomId, userId) => {
     socket.join(roomId)
+    // broadcast.emit vs .emit
+    // if broadcast, the first client doesn't emit the msg, only subsequent clients will trigger this broadcast 
     socket.to(roomId).broadcast.emit('user-connected', userId)
 
+    // when client closes browser, it automatically emits a disconnect
     socket.on('disconnect', () => {
       socket.to(roomId).broadcast.emit('user-disconnected', userId)
     })
