@@ -2,11 +2,8 @@
 const socket = io('/')
 
 const videoGrid = document.getElementById('video-grid')
-const myPeer = new Peer(undefined, {
-  host: '/',
-  port: '9000'
-})
-
+const configuration = { 'iceServers': [{ 'urls': 'stun:stun.l.google.com:19302' }] }
+const peerConnection = new RTCPeerConnection(configuration);
 const peers = {}
 
 const myVideo = document.createElement('video')
@@ -68,6 +65,8 @@ function callAndConnectNewUser(userId, stream) {
 
   peers[userId] = call
 }
+
+
 
 // adds the video to the front end grid
 function addVideoStream(video, stream) {

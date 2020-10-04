@@ -28,8 +28,24 @@ io.on('connection', socket => {
   socket.on('join-room', (roomId, userId) => {
     socket.join(roomId)
     // broadcast.emit vs .emit
-    // if broadcast, the first client doesn't emit the msg, only subsequent clients will trigger this broadcast 
-    socket.to(roomId).broadcast.emit('user-connected', userId)
+    // if broadcast, message is not sent to self
+    socket.to(roomId).broadcast.emit('new-user-entered', userId)
+
+    socket.on('offer', (localDescription, userId) => {
+      socket.to(roomId).broadcast.emit('offer', localDescription, userId)
+    })
+
+    socket.on('answer', (localDescription, userId) => {
+      socket.to(roomId).broadcast.emit('answer', localDescription, userId)
+    })
+
+    socket.on('new-ice-candidate', (candidate) => {
+      socket.to(roomId).broadcast.emit('new-ice-candidate', candidate)
+    })
+
+    socket.on('ready-to-stream', (streamId) => {
+      socket.to(roomId).broadcast.emit('ready-to-stream', streamId)
+    })
 
     // when client closes browser, it automatically emits a disconnect
     socket.on('disconnect', () => {
