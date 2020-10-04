@@ -29,7 +29,7 @@ io.on('connection', socket => {
     socket.join(roomId)
     // broadcast.emit vs .emit
     // if broadcast, message is not sent to self
-    socket.to(roomId).broadcast.emit('new-user-entered', userId)
+    socket.to(roomId).broadcast.emit('another-user-entered', userId)
 
     socket.on('offer', (localDescription, userId) => {
       socket.to(roomId).broadcast.emit('offer', localDescription, userId)

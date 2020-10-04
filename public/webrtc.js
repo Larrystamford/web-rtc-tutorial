@@ -1,21 +1,10 @@
 // joins socket for https://<ip-address>
 const socket = io('/')
 
-// public stun server for example only
-// const configuration = {
-//     'iceServers': [
-//         { 'urls': 'stun:stun.stunprotocol.org:3478' },
-//         { 'urls': 'stun:stun.l.google.com:19302' },
-//     ]
-// };
 const peerConnection = new RTCPeerConnection(null);
 const userId = createUUID();
-console.log(peerConnection)
-console.log(userId)
 
 const videoGrid = document.getElementById('video-grid')
-
-const peers = {}
 
 const myVideo = document.createElement('video')
 myVideo.muted = true
@@ -23,7 +12,7 @@ myVideo.muted = true
 console.log(`${userId} is now joining ${ROOM_ID}`)
 // informs server that a new user has just joined the room
 socket.emit('join-room', ROOM_ID, userId)
-// server then confirms it and broadcasts that the new user has successfully joined the room with socket on 'new-user-entered'
+// server then confirms it and broadcasts that the new user has successfully joined the room with socket on 'another-user-entered'
 
 navigator.mediaDevices.getUserMedia({
     video: true,
@@ -33,50 +22,45 @@ navigator.mediaDevices.getUserMedia({
     // adding own video stream on the front end
     addVideoStream(myVideo, stream)
 
+    // adding video stream to RTC peer connection
     peerConnection.addStream(stream)
 
-
-
-    // this is called when the next user onwards join the room 
-    socket.on('new-user-entered', userId => {
-        console.log(`a new user, ${userId}, has just joined the room, calling user now `, Date.now())
-        // call the new user
+    // this is called when the another user joins the room 
+    socket.on('another-user-entered', userId => {
+        console.log(`a new user, ${userId}, has just joined the room, calling user now at time `, Date.now())
+        // call the new user and send over relevant information to the callee
         callAndConnectNewUser()
     })
 
-    // when a user receives a call offer
+    // Receiving a call, answer the call, take relevant information from caller, send relevant information back to the caller
     socket.on('offer', (message) => {
-        console.log('call offer received ', message)
-        peerConnection.setRemoteDescription(message)
-            .then(() => peerConnection.createAnswer())
-            .then((sdp) => peerConnection.setLocalDescription(sdp))
-            .then(() => {
-                socket.emit('answer', peerConnection.localDescription, userId)
-            })
+        console.log('call received with the following message ', message)
+        receiveAndAnswerCall(message)
     })
+
+    // as local description is set, candidate events will fire off
+    peerConnection.addEventListener('icecandidate', event => {
+        if (event.candidate) {
+            console.log('sending new ice candidate at time ', Date.now())
+            socket.emit('new-ice-candidate', event.candidate);
+        }
+    });
 
     // Listen for remote ICE candidates and add them to the local RTCPeerConnection
     socket.on('new-ice-candidate', candidate => {
         try {
             peerConnection.addIceCandidate(candidate);
-            console.log('ice candidate added')
+            console.log('adding ice candidate at time ', Date.now())
             socket.emit('ready-to-stream', stream.id)
         } catch (e) {
             console.error('Error adding received ice candidate', e);
         }
     });
 
-    // Listen for local ICE candidates on the local RTCPeerConnection
-    peerConnection.addEventListener('icecandidate', event => {
-        if (event.candidate) {
-            console.log('sending new ice candidate')
-            socket.emit('new-ice-candidate', event.candidate);
-        }
-    });
-
     // Listen for ready to stream signal
     socket.on('ready-to-stream', remoteStreamId => {
         try {
+            console.log("stream starting at time ", Date.now())
             let streams = peerConnection.getRemoteStreams();
             for (let i = 0; i < streams.length; i++) {
                 if (streams[i].id == remoteStreamId) {
@@ -93,26 +77,7 @@ navigator.mediaDevices.getUserMedia({
     peerConnection.addEventListener('connectionstatechange', event => {
         console.log('Connection State: ', peerConnection.connectionState)
     });
-
-    // when a user receives a phone call
-    // peerConnection.on('call', call => {
-    //     // answers the call with their A/V stream.
-    //     console.log(`Receiving a call`)
-    //     console.log(`answering the call and returning my stream at time: ${Date.now()}`)
-    //     call.answer(stream)
-    //     const video = document.createElement('video')
-    //     call.on('stream', userVideoStream => {
-    //         // Show stream in some video/canvas element.
-    //         addVideoStream(video, userVideoStream)
-    //     })
-    // })
 })
-
-socket.on('user-disconnected', userId => {
-    // close the call
-    if (peers[userId]) peers[userId].close()
-})
-
 
 function callAndConnectNewUser() {
     console.log(`calling new user at time: ${Date.now()}`)
@@ -125,30 +90,29 @@ function callAndConnectNewUser() {
             socket.emit('offer', peerConnection.localDescription, userId)
         })
 
-    socket.on('answer', (message, userId) => {
+    console.log("local description set at time ", Date.now())
+
+    socket.on('answer', (message) => {
         try {
-            console.log('received answer ', message, userId, Date.now())
+            console.log('received answer from callee at time ', Date.now())
             peerConnection.setRemoteDescription(message)
+            console.log("remote description set at time ", Date.now())
         } catch (err) {
             console.log(err)
         }
     })
+}
 
+function receiveAndAnswerCall(message) {
+    peerConnection.setRemoteDescription(message)
+        .then(() => peerConnection.createAnswer())
+        .then((sdp) => peerConnection.setLocalDescription(sdp))
+        .then(() => {
+            socket.emit('answer', peerConnection.localDescription, userId)
+        })
 
-    // socket.emit('call-remote', userId, stream)
-    // socket.on('receive-remote', ROOM_ID, userId)
-
-    // const call = peerConnection.call(userId, stream)
-    // const video = document.createElement('video')
-    // call.on('stream', userVideoStream => {
-    //     console.log(`Callee answered and returned stream at time: ${Date.now()}`)
-    //     addVideoStream(video, userVideoStream)
-    // })
-    // call.on('close', () => {
-    //     video.remove()
-    // })
-
-    // peers[userId] = call
+    console.log("local description set at time ", Date.now())
+    console.log("remote description set at time ", Date.now())
 }
 
 // adds the video to the front end grid
