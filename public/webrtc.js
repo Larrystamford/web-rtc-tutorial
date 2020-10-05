@@ -1,7 +1,8 @@
 // joins socket for https://<ip-address>
 const socket = io('/')
 
-const peerConnection = new RTCPeerConnection(null);
+const configuration = {'iceServers': [{'urls': 'stun:stun.l.google.com:19302'}]}
+const peerConnection = new RTCPeerConnection(configuration);
 const userId = createUUID();
 
 const videoGrid = document.getElementById('video-grid')
@@ -94,7 +95,7 @@ function callAndConnectNewUser() {
 
     socket.on('answer', (message) => {
         try {
-            console.log('received answer from callee at time ', Date.now())
+            console.log('received answer from callee with the following message ', message)
             peerConnection.setRemoteDescription(message)
             console.log("remote description set at time ", Date.now())
         } catch (err) {
