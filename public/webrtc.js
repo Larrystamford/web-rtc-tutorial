@@ -30,14 +30,11 @@ document.getElementById("stream-button").addEventListener("click", ()=>
             // adding own video stream on the front end
             updateLocalVideoStream(stream)
 
-            // adding video stream to RTC peer connection
-            // Array.prototype.push.apply(mediaTracks, stream.getTracks())
-            // for (var conn in peerConnections) {
-            //     mediaTracks.forEach(track => peerConnections[conn].addTrack(track))
-            // }
+            //adding video stream to RTC peer connection
+            stream.getTracks().forEach(track => mediaTracks.push(track))
             mediaStream = stream
             for (var conn in peerConnections) {
-                peerConnections[conn].addStream(mediaStream)
+                mediaTracks.forEach(track => peerConnections[conn].addTrack(track, mediaStream))
             }
         })
     }
@@ -78,7 +75,7 @@ socket.on('new-ice-candidate', (candidate, targetId, checker) => {
     }
 });
 
-socket.on('disconnect', (targetId) => {
+socket.on('user-disconnected', (targetId) => {
     if(targetId in peerConnections){
         console.log(`Disconnecting ${targetId}...`)
         delete peerConnections[targetId]
@@ -94,16 +91,22 @@ function CreateNewRTCConnection(newUser){
     console.log(`creating new RTC connection with ${newUser}`)
     peerConnections[newUser] = new RTCPeerConnection(configuration)
     // Add media tracks to send over
-    mediaTracks.forEach(track => peerConnections[newUser].addTrack(track))
+    mediaTracks.forEach(track => peerConnections[newUser].addTrack(track, mediaStream))
     //TODO
     if(mediaStream != null){
         peerConnections[newUser].addStream(mediaStream)
     }
     // Create new video box
     addNewVideoDisplay(newUser)
-    peerConnections[newUser].onaddstream = function(event){
+    peerConnections[newUser].ontrack = function(event){
         console.log(`On Track triggered for connection with ${newUser}`)
-        playVideoStream(newUser, event.stream)
+        if(event.track.kind === 'video') {
+            event.track.onunmute = () => {
+                console.log(`Video Track added for connection with ${newUser}`)
+                console.log(event.streams.length)
+                playVideoStream(newUser, event.streams[0])
+            }
+        }
     }
 
     // As ICE Candidates are discovered, event will be fired off to update other party
@@ -177,6 +180,9 @@ function addNewVideoDisplay(targetId){
 // adds the video to the front end grid
 function playVideoStream(targetId, stream) {
     videoStreams[targetId].srcObject = stream
+    videoStreams[targetId].controls = true
+    videoStreams[targetId].muted = true
+    videoStreams[targetId].autoplay = true
     videoStreams[targetId].addEventListener('loadedmetadata', () => {
         videoStreams[targetId].play()
     })
