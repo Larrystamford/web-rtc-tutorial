@@ -78,6 +78,7 @@ socket.on('new-ice-candidate', (candidate, targetId, checker) => {
 socket.on('user-disconnected', (targetId) => {
     if(targetId in peerConnections){
         console.log(`Disconnecting ${targetId}...`)
+        peerConnections[targetId].close()
         delete peerConnections[targetId]
         closeVideoStream(targetId)
     }
