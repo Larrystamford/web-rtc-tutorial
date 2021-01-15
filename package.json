@@ -4,8 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "nodemon server.js",
-    "peer": "nodemon peerServer.js"
+    "dev": "nodemon signalling_server.js"
   },
   "keywords": [],
   "author": "",
